@@ -24,36 +24,36 @@ Finally, run the program with:
 
 This will dump the help text, which is repeated here.
 
-usage:
-  ./colorfield [-options] > out.png
+    usage:
+        ./colorfield [-options] > out.png
 
-where [-options] are one or more of the following:                         
+    where [-options] are one or more of the following:                         
                                                                            
-   -rgb        march through RGB colorspace (default)                      
+        -rgb        march through RGB colorspace (default)                      
                                                                            
-   -hsv        march through HSV colorspace                                
+        -hsv        march through HSV colorspace                                
                                                                            
-   -x res      resolution in x dimension (just scales image), default=128  
+        -x res      resolution in x dimension (just scales image), default=128  
                                                                            
-   -y res      resolution in y dimension (number of colors), default=512   
+        -y res      resolution in y dimension (number of colors), default=512   
                                                                            
-   -color      write a color image (otherwise just a grey image is made)   
+        -color      write a color image (otherwise just a grey image is made)   
                                                                            
-   -b r g b    baseline color, r, g, b from 0.0 to 1.0                     
+        -b r g b    baseline color, r, g, b from 0.0 to 1.0                     
                                                                            
-   -n r g b    integer time constant, from 1 to 2 billion                  
+        -n r g b    integer time constant, from 1 to 2 billion                  
                                                                            
-   -s r g b    real variance, default is 1.0                               
+        -s r g b    real variance, default is 1.0                               
                                                                            
-   -seed val   integer random seed value                                   
+        -seed val   integer random seed value                                   
                                                                            
-   -8          output 8-bit png image                                      
+        -8          output 8-bit png image                                      
                                                                            
-   -16         output 16-bit png (default)                                 
+        -16         output 16-bit png (default)                                 
                                                                            
-   -help       returns this help information                               
+        -help       returns this help information                               
  
-Output image is to stdout, so make sure to redirect to a PNG!
+    Output image is to stdout, so make sure to redirect to a PNG!
 
 ### License
 
