@@ -56,7 +56,6 @@ int usage(char*, int);
 int main (int argc, char **argv) {
 
   int debug = FALSE;
-  int i,y;
   int seed = 235125;
   int x_resolution = 128;
   int y_resolution = 512;
@@ -96,7 +95,7 @@ int main (int argc, char **argv) {
   // parse command-line args
   (void) strcpy(progname,argv[0]);
   if (argc < 1) (void) usage(progname,0);
-  for (i=1; i<argc; i++) {
+  for (int i=1; i<argc; i++) {
     if (strncmp(argv[i], "-8", 2) == 0) {
       depth = 8;
     } else if (strncmp(argv[i], "-16", 3) == 0) {
@@ -166,7 +165,7 @@ int main (int argc, char **argv) {
     imaxrgb = -1;
     minrgb = 2.0;
     //iminrgb = -1;
-    for (i=0; i<3; i++) {
+    for (int i=0; i<3; i++) {
       if (basecolor[i] > maxrgb) {
         maxrgb = basecolor[i];
         imaxrgb = i;
@@ -202,25 +201,30 @@ int main (int argc, char **argv) {
   hue = basecolor[0];
 
   // sequences are r,g,b or h,s,v
-  for (i=0; i<3; i++) if (num[i] < 1) num[i] = 1;
-  for (i=0; i<3; i++) if (num[i] > 1000000) num[i] = 1000000;
+  for (int i=0; i<3; i++) if (num[i] < 1) num[i] = 1;
+  for (int i=0; i<3; i++) if (num[i] > 1000000) num[i] = 1000000;
 
   // find a multiplier that proportional to 1/RMS
-  for (i=0; i<3; i++) variance[i] = 1./sqrt((FLOAT)num[i]);
+  for (int i=0; i<3; i++) variance[i] = 1./sqrt((FLOAT)num[i]);
 
   // allocate array for random number sequence
-  i = num[0];
-  if (num[1] > i) i = num[1];
-  if (num[2] > i) i = num[2];
-  seq = allocate_2d_array_F(i,3);
+  int itmp = num[0];
+  if (num[1] > itmp) itmp = num[1];
+  if (num[2] > itmp) itmp = num[2];
+  seq = allocate_2d_array_F(itmp,3);
 
   // sequences are r,g,b or h,s,v
-  for (i=0; i<num[0]; i++) seq[i][0] = (FLOAT)rand()/RAND_MAX;
-  for (i=0; i<num[1]; i++) seq[i][1] = (FLOAT)rand()/RAND_MAX;
-  for (i=0; i<num[2]; i++) seq[i][2] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[0]; i++) seq[i][0] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[1]; i++) seq[i][1] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[2]; i++) seq[i][2] = (FLOAT)rand()/RAND_MAX;
 
   // march through y-direction (rows) and set colors
-  for (y=0; y<y_resolution; y++) {
+  for (int y=0; y<y_resolution; y++) {
+
+   // march along x-direction, if required
+   int xmax = x_resolution;
+   if (TRUE) xmax = 1;
+   for (int x=0; x<xmax; x++) {
 
     // update the number list
     seq[y%num[0]][0] = (FLOAT)rand()/RAND_MAX;
@@ -228,17 +232,17 @@ int main (int argc, char **argv) {
     seq[y%num[2]][2] = (FLOAT)rand()/RAND_MAX;
 
     // use sums of random numbers to select three values
-    red[0][y] = 0.0;
-    for (i=0; i<num[0]; i++) red[0][y] += seq[i][0];
-    red[0][y] = (red[0][y]-0.5*num[0])*variance[0];
+    float temp = 0.0;
+    for (int i=0; i<num[0]; i++) temp += seq[i][0];
+    red[x][y] = (temp-0.5*num[0])*variance[0];
 
-    grn[0][y] = 0.0;
-    for (i=0; i<num[1]; i++) grn[0][y] += seq[i][1];
-    grn[0][y] = (grn[0][y]-0.5*num[1])*variance[1];
+    temp = 0.0;
+    for (int i=0; i<num[1]; i++) temp += seq[i][1];
+    grn[x][y] = (temp-0.5*num[1])*variance[1];
 
-    blu[0][y] = 0.0;
-    for (i=0; i<num[2]; i++) blu[0][y] += seq[i][2];
-    blu[0][y] = (blu[0][y]-0.5*num[2])*variance[2];
+    temp = 0.0;
+    for (int i=0; i<num[2]; i++) temp += seq[i][2];
+    blu[x][y] = (temp-0.5*num[2])*variance[2];
     // now, red,grn,blu are correlated Gaussian random numbers centered on 0
 
     // switch on rgb-vs-hsv
@@ -246,12 +250,12 @@ int main (int argc, char **argv) {
 
       // scale then add to the baseline
       // these will be made range-bound when writing the image
-      red[0][y] = basecolor[0] + scale[0]*red[0][y];
-      grn[0][y] = basecolor[1] + scale[1]*grn[0][y];
-      blu[0][y] = basecolor[2] + scale[2]*blu[0][y];
+      red[x][y] = basecolor[0] + scale[0]*red[x][y];
+      grn[x][y] = basecolor[1] + scale[1]*grn[x][y];
+      blu[x][y] = basecolor[2] + scale[2]*blu[x][y];
 
       // compress down to single channel
-      if (!use_color) grn[0][y] = 0.3*red[0][y] + 0.6*grn[0][y] + 0.1*blu[0][y];
+      if (!use_color) grn[x][y] = 0.3*red[x][y] + 0.6*grn[x][y] + 0.1*blu[x][y];
 
     } else { // 3 numbers represent hsv
 
@@ -259,67 +263,72 @@ int main (int argc, char **argv) {
         // convert hsv into rgb
 
         // first, spread the numbers across a range (0-6 for hue, 0-1 for sv)
-        hue += 0.1*scale[0]*red[0][y];
-        saturation = basecolor[1] + scale[1]*grn[0][y];
-        value = basecolor[2] + scale[2]*blu[0][y];
+        hue = basecolor[0] + 0.166667*scale[0]*red[x][y];
+        saturation = basecolor[1] + scale[1]*grn[x][y];
+        value = basecolor[2] + scale[2]*blu[x][y];
         //fprintf(stderr,"this color in HSV is %g %g %g\n",hue,saturation,value);
 
         // then convert hsv to rgb
         if (hue < 0.0) hue += 6.;
         if (hue > 6.0) hue -= 6.;
-        i = ((int)hue) % 6;
-        f = hue - (FLOAT)i;
-        if ( !(i&1) ) f = 1 - f; // if i is even
+        int ihue = ((int)hue) % 6;
+        f = hue - (FLOAT)ihue;
+        if ( !(ihue&1) ) f = 1 - f; // if i is even
         m = value * (1 - saturation);
         n = value * (1 - saturation * f);
         v = value;
         //if (fabs(hue)<0.1) fprintf(stderr,"%d %g %d %g\n",y,hue,i,f);
         //if (y>65 && y<75) fprintf(stderr,"%d %g %d %g\n",y,hue,i,f);
 
-        switch (i) {
+        switch (ihue) {
           case 6:
           case 0:
-            red[0][y] = v;
-            grn[0][y] = n;
-            blu[0][y] = m;
+            red[x][y] = v;
+            grn[x][y] = n;
+            blu[x][y] = m;
             break;
           case 1:
-            red[0][y] = n;
-            grn[0][y] = v;
-            blu[0][y] = m;
+            red[x][y] = n;
+            grn[x][y] = v;
+            blu[x][y] = m;
             break;
           case 2:
-            red[0][y] = m;
-            grn[0][y] = v;
-            blu[0][y] = n;
+            red[x][y] = m;
+            grn[x][y] = v;
+            blu[x][y] = n;
             break;
           case 3:
-            red[0][y] = m;
-            grn[0][y] = n;
-            blu[0][y] = v;
+            red[x][y] = m;
+            grn[x][y] = n;
+            blu[x][y] = v;
             break;
           case 4:
-            red[0][y] = n;
-            grn[0][y] = m;
-            blu[0][y] = v;
+            red[x][y] = n;
+            grn[x][y] = m;
+            blu[x][y] = v;
             break;
           case 5:
-            red[0][y] = v;
-            grn[0][y] = m;
-            blu[0][y] = n;
+            red[x][y] = v;
+            grn[x][y] = m;
+            blu[x][y] = n;
             break;
         }
 
       } else { // no color
         // just use value channel
-        grn[0][y] = blu[0][y];
+        grn[x][y] = blu[x][y];
       }
 
     } // hsv
 
     // debug print
-    if (debug) fprintf(stdout,"%g %g %g\n",red[0][y],grn[0][y],blu[0][y]);
-  }
+    if (debug) fprintf(stdout,"%g %g %g\n",red[x][y],grn[x][y],blu[x][y]);
+   } // loop over x
+
+   // optionally fill in the rest of this row
+   for (int x=xmax; x<x_resolution; ++x) {
+   }
+  } // loop over y
 
   // convert the single column into a PNG file
   if (!debug) write_png_image (use_color,red,grn,blu,x_resolution,y_resolution,depth);
