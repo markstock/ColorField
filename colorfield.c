@@ -65,7 +65,7 @@ int main (int argc, char **argv) {
   int use_rgb = TRUE;
   int basecolorset = FALSE;
   int num[3];
-  int imaxrgb,iminrgb;
+  int imaxrgb;//,iminrgb;
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
   FLOAT **blu = NULL;
@@ -165,7 +165,7 @@ int main (int argc, char **argv) {
     maxrgb = -1.0;
     imaxrgb = -1;
     minrgb = 2.0;
-    iminrgb = -1;
+    //iminrgb = -1;
     for (i=0; i<3; i++) {
       if (basecolor[i] > maxrgb) {
         maxrgb = basecolor[i];
@@ -173,7 +173,7 @@ int main (int argc, char **argv) {
       }
       if (basecolor[i] < minrgb) {
         minrgb = basecolor[i];
-        iminrgb = i;
+        //iminrgb = i;
       }
     }
     chroma = maxrgb - minrgb;
@@ -643,9 +643,9 @@ int usage (char progname[80],int status) {
 
    //fprintf(stderr, "usage:\n  %s [-options|infile] > out.png\n\n", progname);
    fprintf(stderr, "usage:\n  %s [-options] > out.png\n\n", progname);
-   for (cpp = help_message; *cpp; cpp++)
-      fprintf(stderr, "%s\n", *cpp);
-      fflush(stderr);
+   for (cpp = help_message; *cpp; cpp++) fprintf(stderr, "%s\n", *cpp);
+   fflush(stderr);
+
    exit(status);
    return(0);
 }
