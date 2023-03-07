@@ -1,11 +1,12 @@
 /*
  * colorfield.c
  *
- * (c) 2010-2011 Mark J. Stock
+ * (c) 2010-2011,17,23 Mark J. Stock
  *
  * 2010-11-15 MJS began project with copy of tracefield program
  * 2010-12-02 MJS modified to use HSV colors
  * 2011-01-26 MJS wrap hue around---don't bounce between [v0.1]
+ * 2017-03-23 MJS flip hue quickly
  *
  * A program to create a PNG image of bands of related colors
  *
@@ -64,7 +65,6 @@ int main (int argc, char **argv) {
   int use_rgb = TRUE;
   int basecolorset = FALSE;
   int num[3];
-  int imaxrgb;//,iminrgb;
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
   FLOAT **blu = NULL;
@@ -74,8 +74,12 @@ int main (int argc, char **argv) {
   FLOAT maxrgb,minrgb,chroma,hue,saturation,value;
   FLOAT scale[3];
   FLOAT variance[3];
-  char progname[80];
-  //char infilename[80];
+  //FLOAT hftimeconst = 100.0;
+  //FLOAT hfduration = 1.0;
+  //FLOAT hfadd = 0.0;
+  //FLOAT hfsum = 0.0;
+  char progname[255];
+  //char infilename[255];
 
   // default number string length (like a time constant)
   num[0] = 100;
@@ -127,6 +131,10 @@ int main (int argc, char **argv) {
       num[0] = atoi(argv[++i]);
       num[1] = atoi(argv[++i]);
       num[2] = atoi(argv[++i]);
+    //} else if (strncmp(argv[i], "-flip", 5) == 0) {
+      //hftimeconst = atof(argv[++i]);
+      //hfduration = atof(argv[++i]);
+      //hfadd = 0.5/hftimeconst;
     } else {
       // it's not an arg, so it must be the input file
       //(void) strcpy(infilename,argv[i]);
@@ -162,9 +170,9 @@ int main (int argc, char **argv) {
   // convert basecolor to hsv if necessary (basecolor is always rgb)
   if (basecolorset && !use_rgb) {
     maxrgb = -1.0;
-    imaxrgb = -1;
+    int imaxrgb = -1;
     minrgb = 2.0;
-    //iminrgb = -1;
+    //int iminrgb = -1;
     for (int i=0; i<3; i++) {
       if (basecolor[i] > maxrgb) {
         maxrgb = basecolor[i];
@@ -195,14 +203,14 @@ int main (int argc, char **argv) {
     basecolor[0] = hue;
     basecolor[1] = saturation;
     basecolor[2] = value;
-    //fprintf(stderr,"base color in HSV is %g %g %g\n",basecolor[0],basecolor[1],basecolor[2]);
+    fprintf(stderr,"base color in HSV is %g %g %g\n",basecolor[0],basecolor[1],basecolor[2]);
   }
   // set hue again to remind us
   hue = basecolor[0];
 
   // sequences are r,g,b or h,s,v
   for (int i=0; i<3; i++) if (num[i] < 1) num[i] = 1;
-  for (int i=0; i<3; i++) if (num[i] > 1000000) num[i] = 1000000;
+  for (int i=0; i<3; i++) if (num[i] > 10000000) num[i] = 10000000;
 
   // find a multiplier that proportional to 1/RMS
   for (int i=0; i<3; i++) variance[i] = 1./sqrt((FLOAT)num[i]);
@@ -222,14 +230,25 @@ int main (int argc, char **argv) {
   for (int y=0; y<y_resolution; y++) {
 
    // march along x-direction, if required
-   int xmax = x_resolution;
-   if (TRUE) xmax = 1;
-   for (int x=0; x<xmax; x++) {
+   int x = 0;
+   //int xmax = x_resolution;
+   //if (TRUE) xmax = 1;
+   //for (int x=0; x<xmax; x++) {
 
     // update the number list
     seq[y%num[0]][0] = (FLOAT)rand()/RAND_MAX;
     seq[y%num[1]][1] = (FLOAT)rand()/RAND_MAX;
     seq[y%num[2]][2] = (FLOAT)rand()/RAND_MAX;
+
+    // check for a flip
+    //if ((FLOAT)rand()/RAND_MAX < hfsum) {
+      // begin a flip!
+      //hfstart = (float)y;
+      //hfend = hfstart + hfduration;
+    //} else {
+      // it will get more likely next step
+      //hfsum += hfadd;
+    //}
 
     // use sums of random numbers to select three values
     float temp = 0.0;
@@ -264,6 +283,15 @@ int main (int argc, char **argv) {
 
         // first, spread the numbers across a range (0-6 for hue, 0-1 for sv)
         hue = basecolor[0] + 0.166667*scale[0]*red[x][y];
+
+        if (FALSE) {
+        // OMG, is hue this wrong?!?!?
+        //hue += 0.1*scale[0]*red[0][y];		// original - wrong!
+        //hue += scale[0]*variance[0]*((FLOAT)rand()/RAND_MAX - 0.5); // better
+        hue = basecolor[0] + scale[0]*red[0][y];
+        hue = fmod(hue + 600.0, 6.0);
+        }
+
         saturation = basecolor[1] + scale[1]*grn[x][y];
         value = basecolor[2] + scale[2]*blu[x][y];
         //fprintf(stderr,"this color in HSV is %g %g %g\n",hue,saturation,value);
@@ -273,7 +301,7 @@ int main (int argc, char **argv) {
         if (hue > 6.0) hue -= 6.;
         int ihue = ((int)hue) % 6;
         f = hue - (FLOAT)ihue;
-        if ( !(ihue&1) ) f = 1 - f; // if i is even
+        if ( !(ihue&1) ) f = 1 - f; // if ihue is even
         m = value * (1 - saturation);
         n = value * (1 - saturation * f);
         v = value;
@@ -323,11 +351,6 @@ int main (int argc, char **argv) {
 
     // debug print
     if (debug) fprintf(stdout,"%g %g %g\n",red[x][y],grn[x][y],blu[x][y]);
-   } // loop over x
-
-   // optionally fill in the rest of this row
-   for (int x=xmax; x<x_resolution; ++x) {
-   }
   } // loop over y
 
   // convert the single column into a PNG file
@@ -616,7 +639,7 @@ FLOAT** allocate_2d_array_F(int nx, int ny) {
  * This function writes basic usage information to stderr,
  * and then quits. Too bad.
  */
-int usage (char progname[80],int status) {
+int usage (char progname[255],int status) {
 
    static char **cpp, *help_message[] =
    {
@@ -634,10 +657,12 @@ int usage (char progname[80],int status) {
        "                                                                           ",
        "   -b r g b    baseline color, r, g, b from 0.0 to 1.0                     ",
        "                                                                           ",
-       "   -n r g b    integer time constant, from 1 to 2 billion                  ",
+       "   -n r g b    integer time constant, from 1 to 2 billion (default=100)    ",
        "                                                                           ",
        "   -s r g b    real variance, default is 1.0                               ",
        "                                                                           ",
+       //"   -flip t d   flip hue given (t)ime constant, (d)uration, default=100 1   ",
+       //"                                                                           ",
        "   -seed val   integer random seed value                                   ",
        "                                                                           ",
        "   -8          output 8-bit png image                                      ",
@@ -652,9 +677,10 @@ int usage (char progname[80],int status) {
 
    //fprintf(stderr, "usage:\n  %s [-options|infile] > out.png\n\n", progname);
    fprintf(stderr, "usage:\n  %s [-options] > out.png\n\n", progname);
-   for (cpp = help_message; *cpp; cpp++) fprintf(stderr, "%s\n", *cpp);
-   fflush(stderr);
-
+   for (cpp = help_message; *cpp; cpp++) {
+      fprintf(stderr, "%s\n", *cpp);
+      fflush(stderr);
+   }
    exit(status);
    return(0);
 }
