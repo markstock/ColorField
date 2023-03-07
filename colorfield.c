@@ -6,7 +6,7 @@
  * 2010-11-15 MJS began project with copy of tracefield program
  * 2010-12-02 MJS modified to use HSV colors
  * 2011-01-26 MJS wrap hue around---don't bounce between [v0.1]
- * 2017-03-23 MJS flip hue quickly
+ * 2023-03-06 MJS periodically flip to complementary hue
  *
  * A program to create a PNG image of bands of related colors
  *
@@ -75,10 +75,10 @@ int main (int argc, char **argv) {
   FLOAT basecolor[3];
   FLOAT scale[3];
   FLOAT variance[3];
-  //FLOAT hftimeconst = 100.0;
-  //FLOAT hfduration = 1.0;
-  //FLOAT hfadd = 0.0;
-  //FLOAT hfsum = 0.0;
+  FLOAT hfsum = 0.0;
+  FLOAT hftimeconst = -1.0;
+  FLOAT hfadd = 0.15 / powf(hftimeconst,2);
+  int flipped = FALSE;
   COLORSPACE cspace = rgb;
   char progname[255];
   //char infilename[255];
@@ -133,10 +133,9 @@ int main (int argc, char **argv) {
       num[0] = atoi(argv[++i]);
       num[1] = atoi(argv[++i]);
       num[2] = atoi(argv[++i]);
-    //} else if (strncmp(argv[i], "-flip", 5) == 0) {
-      //hftimeconst = atof(argv[++i]);
-      //hfduration = atof(argv[++i]);
-      //hfadd = 0.5/hftimeconst;
+    } else if (strncmp(argv[i], "-2", 2) == 0) {
+      hftimeconst = atof(argv[++i]);
+      hfadd = 1.0 / powf(hftimeconst,2);
     } else if (strncmp(argv[i], "-v", 2) == 0) {
       debug = TRUE;
     } else {
@@ -240,14 +239,16 @@ int main (int argc, char **argv) {
     seq[2][y%num[2]] = (FLOAT)rand()/RAND_MAX;
 
     // check for a flip
-    //if ((FLOAT)rand()/RAND_MAX < hfsum) {
-      // begin a flip!
-      //hfstart = (float)y;
-      //hfend = hfstart + hfduration;
-    //} else {
-      // it will get more likely next step
-      //hfsum += hfadd;
-    //}
+    if (hftimeconst > 0.0) {
+      if ((FLOAT)rand()/RAND_MAX < hfsum) {
+        // begin a flip!
+        flipped = !flipped;
+        hfsum = 0.0;
+      } else {
+        // it will get more likely next step
+        hfsum += hfadd;
+      }
+    }
 
     // use sums of random numbers to select three values
     // first red, or hue
@@ -294,15 +295,8 @@ int main (int argc, char **argv) {
 
         // hue is special because it wraps around - ensure it's 0..6 here
         FLOAT hue = basecolor[0] + scale[0]*red[x][y]/6.0;
+        if (flipped) hue += 3.0;
         hue = hue - 6.0 * (floorf(hue / 6.0));
-
-        if (FALSE) {
-        // OMG, is hue this wrong?!?!?
-        //hue += 0.1*scale[0]*red[0][y];		// original - wrong!
-        //hue += scale[0]*variance[0]*((FLOAT)rand()/RAND_MAX - 0.5); // better
-        hue = basecolor[0] + scale[0]*red[0][y];
-        hue = fmod(hue + 600.0, 6.0);
-        }
 
         const FLOAT saturation = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
         const FLOAT value      = fmax(0.0, fmin(1.0, basecolor[2] + scale[2]*blu[x][y]));
@@ -670,17 +664,19 @@ int usage (char progname[255],int status) {
        "                                                                           ",
        "   -b r g b    baseline color, r, g, b from 0.0 to 1.0                     ",
        "                                                                           ",
-       "   -n r g b    integer time constant, from 1 to 2 billion (default=100)    ",
+       "   -n r g b    integer time constant, from 1 to 100 million (default=100)  ",
        "                                                                           ",
        "   -s r g b    real variance, default is 1.0                               ",
        "                                                                           ",
-       //"   -flip t d   flip hue given (t)ime constant, (d)uration, default=100 1   ",
-       //"                                                                           ",
+       "   -2 t        flip to complentary hue with (t)ime constant, default=100   ",
+       "                                                                           ",
        "   -seed val   integer random seed value                                   ",
        "                                                                           ",
        "   -8          output 8-bit png image                                      ",
        "                                                                           ",
        "   -16         output 16-bit png (default)                                 ",
+       "                                                                           ",
+       "   -v          verbose output (hsv/rgb for each row)                       ",
        "                                                                           ",
        "   -help       returns this help information                               ",
        " ",
