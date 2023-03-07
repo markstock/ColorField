@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O3 -ffast-math -Wall
+CFLAGS=-O2 -march=native -Wall
 LDFLAGS=-lm -lpng
 EXE=colorfield
 
