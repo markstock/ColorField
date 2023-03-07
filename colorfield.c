@@ -39,9 +39,13 @@
 #define FALSE 0
 #define FLOAT float
 
-// not used yet, but should be!
-enum colorspace {
-  rgb, hsv, hsl, lab } colorspace = rgb;
+// type of colorspace, not all supported yet
+typedef enum colorspace {
+  rgb,		// default
+  hsv,
+  hsl,		// unused
+  lab		// unused
+} COLORSPACE;
 
 // locally-defined subroutines
 FLOAT** allocate_2d_array_F(int, int);
@@ -62,22 +66,20 @@ int main (int argc, char **argv) {
   int y_resolution = 512;
   int depth = 8;
   int use_color = TRUE;
-  int use_rgb = TRUE;
   int basecolorset = FALSE;
   int num[3];
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
   FLOAT **blu = NULL;
   FLOAT **seq = NULL;
-  FLOAT f,n,m,v;
   FLOAT basecolor[3];
-  FLOAT maxrgb,minrgb,chroma,hue,saturation,value;
   FLOAT scale[3];
   FLOAT variance[3];
   //FLOAT hftimeconst = 100.0;
   //FLOAT hfduration = 1.0;
   //FLOAT hfadd = 0.0;
   //FLOAT hfsum = 0.0;
+  COLORSPACE cspace = rgb;
   char progname[255];
   //char infilename[255];
 
@@ -105,9 +107,9 @@ int main (int argc, char **argv) {
     } else if (strncmp(argv[i], "-16", 3) == 0) {
       depth = 16;
     } else if (strncmp(argv[i], "-rgb", 4) == 0) {
-      use_rgb = TRUE;
+      cspace = rgb;
     } else if (strncmp(argv[i], "-hsv", 4) == 0) {
-      use_rgb = FALSE;
+      cspace = hsv;
     } else if (strncmp(argv[i], "-color", 3) == 0) {
       use_color = TRUE;
     } else if (strncmp(argv[i], "-grey", 3) == 0) {
@@ -144,7 +146,7 @@ int main (int argc, char **argv) {
     }
   }
 
-  // allocate the array for the image
+  // allocate the array for the image (always 1 in x for now)
   red = allocate_2d_array_F(1,y_resolution);
   grn = allocate_2d_array_F(1,y_resolution);
   blu = allocate_2d_array_F(1,y_resolution);
@@ -154,7 +156,7 @@ int main (int argc, char **argv) {
 
   // if there's no basecolor, set it
   if (!basecolorset) {
-    if (use_rgb) {
+    if (cspace == rgb) {
       // pure gray---lame!
       basecolor[0] = 0.5;
       basecolor[1] = 0.5;
@@ -168,10 +170,10 @@ int main (int argc, char **argv) {
   }
 
   // convert basecolor to hsv if necessary (basecolor is always rgb)
-  if (basecolorset && !use_rgb) {
-    maxrgb = -1.0;
+  if (basecolorset && cspace == hsv) {
+    FLOAT maxrgb = -1.0;
     int imaxrgb = -1;
-    minrgb = 2.0;
+    FLOAT minrgb = 2.0;
     //int iminrgb = -1;
     for (int i=0; i<3; i++) {
       if (basecolor[i] > maxrgb) {
@@ -183,8 +185,8 @@ int main (int argc, char **argv) {
         //iminrgb = i;
       }
     }
-    chroma = maxrgb - minrgb;
-    hue = 0.0;
+    FLOAT chroma = maxrgb - minrgb;
+    FLOAT hue = 0.0;
     if (chroma < 1.e-5) {
       // hue really is undefined in this case
     } else if (imaxrgb == 0) {
@@ -194,51 +196,46 @@ int main (int argc, char **argv) {
     } else if (imaxrgb == 2) {
       hue = 4 + (basecolor[0]-basecolor[1]) / chroma;
     }
-    value = maxrgb;
-    if (chroma < 1.e-5) {
-      saturation = 0.;
-    } else {
-      saturation = chroma/value;
-    }
+    const FLOAT value = maxrgb;
+    FLOAT saturation = 0.0;
+    if (chroma > 1.e-5) saturation = chroma/value;
     basecolor[0] = hue;
     basecolor[1] = saturation;
     basecolor[2] = value;
     fprintf(stderr,"base color in HSV is %g %g %g\n",basecolor[0],basecolor[1],basecolor[2]);
   }
-  // set hue again to remind us
-  hue = basecolor[0];
 
   // sequences are r,g,b or h,s,v
   for (int i=0; i<3; i++) if (num[i] < 1) num[i] = 1;
-  for (int i=0; i<3; i++) if (num[i] > 10000000) num[i] = 10000000;
+  for (int i=0; i<3; i++) if (num[i] > 1000000) num[i] = 1000000;
 
   // find a multiplier that proportional to 1/RMS
   for (int i=0; i<3; i++) variance[i] = 1./sqrt((FLOAT)num[i]);
 
-  // allocate array for random number sequence
-  int itmp = num[0];
-  if (num[1] > itmp) itmp = num[1];
-  if (num[2] > itmp) itmp = num[2];
-  seq = allocate_2d_array_F(itmp,3);
+  // allocate arrays for random number sequence
+  seq = (FLOAT **)malloc(3 * sizeof(FLOAT*));
+  seq[0] = (FLOAT *)malloc(num[0] * sizeof(FLOAT));
+  seq[1] = (FLOAT *)malloc(num[1] * sizeof(FLOAT));
+  seq[2] = (FLOAT *)malloc(num[2] * sizeof(FLOAT));
 
   // sequences are r,g,b or h,s,v
-  for (int i=0; i<num[0]; i++) seq[i][0] = (FLOAT)rand()/RAND_MAX;
-  for (int i=0; i<num[1]; i++) seq[i][1] = (FLOAT)rand()/RAND_MAX;
-  for (int i=0; i<num[2]; i++) seq[i][2] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[0]; i++) seq[0][i] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[1]; i++) seq[1][i] = (FLOAT)rand()/RAND_MAX;
+  for (int i=0; i<num[2]; i++) seq[2][i] = (FLOAT)rand()/RAND_MAX;
 
   // march through y-direction (rows) and set colors
   for (int y=0; y<y_resolution; y++) {
 
-   // march along x-direction, if required
-   int x = 0;
-   //int xmax = x_resolution;
-   //if (TRUE) xmax = 1;
-   //for (int x=0; x<xmax; x++) {
+    // march along x-direction, if required
+    int x = 0;
+    //int xmax = x_resolution;
+    //if (TRUE) xmax = 1;
+    //for (int x=0; x<xmax; x++) {
 
     // update the number list
-    seq[y%num[0]][0] = (FLOAT)rand()/RAND_MAX;
-    seq[y%num[1]][1] = (FLOAT)rand()/RAND_MAX;
-    seq[y%num[2]][2] = (FLOAT)rand()/RAND_MAX;
+    seq[0][y%num[0]] = (FLOAT)rand()/RAND_MAX;
+    seq[1][y%num[1]] = (FLOAT)rand()/RAND_MAX;
+    seq[2][y%num[2]] = (FLOAT)rand()/RAND_MAX;
 
     // check for a flip
     //if ((FLOAT)rand()/RAND_MAX < hfsum) {
@@ -251,21 +248,31 @@ int main (int argc, char **argv) {
     //}
 
     // use sums of random numbers to select three values
-    float temp = 0.0;
-    for (int i=0; i<num[0]; i++) temp += seq[i][0];
+    // first red, or hue
+    {
+    FLOAT temp = 0.0;
+    for (int i=0; i<num[0]; i++) temp += seq[0][i];
     red[x][y] = (temp-0.5*num[0])*variance[0];
+    }
 
-    temp = 0.0;
-    for (int i=0; i<num[1]; i++) temp += seq[i][1];
+    // then green, or saturation
+    {
+    FLOAT temp = 0.0;
+    for (int i=0; i<num[1]; i++) temp += seq[1][i];
     grn[x][y] = (temp-0.5*num[1])*variance[1];
+    }
 
-    temp = 0.0;
-    for (int i=0; i<num[2]; i++) temp += seq[i][2];
+    // then blue, or value
+    {
+    FLOAT temp = 0.0;
+    for (int i=0; i<num[2]; i++) temp += seq[2][i];
     blu[x][y] = (temp-0.5*num[2])*variance[2];
+    }
+
     // now, red,grn,blu are correlated Gaussian random numbers centered on 0
 
     // switch on rgb-vs-hsv
-    if (use_rgb) {
+    if (cspace == rgb) {
 
       // scale then add to the baseline
       // these will be made range-bound when writing the image
@@ -282,7 +289,7 @@ int main (int argc, char **argv) {
         // convert hsv into rgb
 
         // first, spread the numbers across a range (0-6 for hue, 0-1 for sv)
-        hue = basecolor[0] + 0.166667*scale[0]*red[x][y];
+        FLOAT hue = basecolor[0] + 0.166667*scale[0]*red[x][y];
 
         if (FALSE) {
         // OMG, is hue this wrong?!?!?
@@ -292,19 +299,19 @@ int main (int argc, char **argv) {
         hue = fmod(hue + 600.0, 6.0);
         }
 
-        saturation = basecolor[1] + scale[1]*grn[x][y];
-        value = basecolor[2] + scale[2]*blu[x][y];
+        const FLOAT saturation = basecolor[1] + scale[1]*grn[x][y];
+        const FLOAT value      = basecolor[2] + scale[2]*blu[x][y];
         //fprintf(stderr,"this color in HSV is %g %g %g\n",hue,saturation,value);
 
         // then convert hsv to rgb
         if (hue < 0.0) hue += 6.;
         if (hue > 6.0) hue -= 6.;
-        int ihue = ((int)hue) % 6;
-        f = hue - (FLOAT)ihue;
+        const int ihue = ((int)hue) % 6;
+        FLOAT f = hue - (FLOAT)ihue;
         if ( !(ihue&1) ) f = 1 - f; // if ihue is even
-        m = value * (1 - saturation);
-        n = value * (1 - saturation * f);
-        v = value;
+        const FLOAT m = value * (1.0 - saturation);
+        const FLOAT n = value * (1.0 - saturation * f);
+        const FLOAT v = value;
         //if (fabs(hue)<0.1) fprintf(stderr,"%d %g %d %g\n",y,hue,i,f);
         //if (y>65 && y<75) fprintf(stderr,"%d %g %d %g\n",y,hue,i,f);
 
