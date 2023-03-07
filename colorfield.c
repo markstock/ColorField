@@ -137,6 +137,8 @@ int main (int argc, char **argv) {
       //hftimeconst = atof(argv[++i]);
       //hfduration = atof(argv[++i]);
       //hfadd = 0.5/hftimeconst;
+    } else if (strncmp(argv[i], "-v", 2) == 0) {
+      debug = TRUE;
     } else {
       // it's not an arg, so it must be the input file
       //(void) strcpy(infilename,argv[i]);
@@ -202,7 +204,7 @@ int main (int argc, char **argv) {
     basecolor[0] = hue;
     basecolor[1] = saturation;
     basecolor[2] = value;
-    fprintf(stderr,"base color in HSV is %g %g %g\n",basecolor[0],basecolor[1],basecolor[2]);
+    if (debug) fprintf(stderr,"base color in HSV is %g %g %g\n",basecolor[0],basecolor[1],basecolor[2]);
   }
 
   // sequences are r,g,b or h,s,v
@@ -276,9 +278,9 @@ int main (int argc, char **argv) {
 
       // scale then add to the baseline
       // these will be made range-bound when writing the image
-      red[x][y] = basecolor[0] + scale[0]*red[x][y];
-      grn[x][y] = basecolor[1] + scale[1]*grn[x][y];
-      blu[x][y] = basecolor[2] + scale[2]*blu[x][y];
+      red[x][y] = fmax(0.0, fmin(1.0, basecolor[0] + scale[0]*red[x][y]));
+      grn[x][y] = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
+      blu[x][y] = fmax(0.0, fmin(1.0, basecolor[2] + scale[2]*blu[x][y]));
 
       // compress down to single channel
       if (!use_color) grn[x][y] = 0.3*red[x][y] + 0.6*grn[x][y] + 0.1*blu[x][y];
@@ -288,8 +290,11 @@ int main (int argc, char **argv) {
       if (use_color) {
         // convert hsv into rgb
 
-        // first, spread the numbers across a range (0-6 for hue, 0-1 for sv)
-        FLOAT hue = basecolor[0] + 0.166667*scale[0]*red[x][y];
+        // first, spread the numbers across a range (0-6 for hue, 0-1 for sat and val)
+
+        // hue is special because it wraps around - ensure it's 0..6 here
+        FLOAT hue = basecolor[0] + scale[0]*red[x][y]/6.0;
+        hue = hue - 6.0 * (floorf(hue / 6.0));
 
         if (FALSE) {
         // OMG, is hue this wrong?!?!?
@@ -299,16 +304,17 @@ int main (int argc, char **argv) {
         hue = fmod(hue + 600.0, 6.0);
         }
 
-        const FLOAT saturation = basecolor[1] + scale[1]*grn[x][y];
-        const FLOAT value      = basecolor[2] + scale[2]*blu[x][y];
+        const FLOAT saturation = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
+        const FLOAT value      = fmax(0.0, fmin(1.0, basecolor[2] + scale[2]*blu[x][y]));
         //fprintf(stderr,"this color in HSV is %g %g %g\n",hue,saturation,value);
 
         // then convert hsv to rgb
-        if (hue < 0.0) hue += 6.;
-        if (hue > 6.0) hue -= 6.;
         const int ihue = ((int)hue) % 6;
         FLOAT f = hue - (FLOAT)ihue;
         if ( !(ihue&1) ) f = 1 - f; // if ihue is even
+
+        if (debug) fprintf(stderr,"%d hsv %g %g %g\n", y, hue, saturation, value);
+
         const FLOAT m = value * (1.0 - saturation);
         const FLOAT n = value * (1.0 - saturation * f);
         const FLOAT v = value;
@@ -357,11 +363,11 @@ int main (int argc, char **argv) {
     } // hsv
 
     // debug print
-    if (debug) fprintf(stdout,"%g %g %g\n",red[x][y],grn[x][y],blu[x][y]);
+    if (debug) fprintf(stderr,"rgb %g %g %g\n",red[x][y],grn[x][y],blu[x][y]);
   } // loop over y
 
   // convert the single column into a PNG file
-  if (!debug) write_png_image (use_color,red,grn,blu,x_resolution,y_resolution,depth);
+  write_png_image (use_color,red,grn,blu,x_resolution,y_resolution,depth);
 
   // quit, we must be done.
   exit(0);
