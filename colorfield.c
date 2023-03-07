@@ -77,7 +77,7 @@ int main (int argc, char **argv) {
   FLOAT variance[3];
   FLOAT hfsum = 0.0;
   FLOAT hftimeconst = -1.0;
-  FLOAT hfadd = 0.15 / powf(hftimeconst,2);
+  FLOAT hfadd = 0.0;
   int flipped = FALSE;
   COLORSPACE cspace = rgb;
   char progname[255];
