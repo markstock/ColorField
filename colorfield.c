@@ -67,6 +67,7 @@ int main (int argc, char **argv) {
   int depth = 8;
   int use_color = TRUE;
   int basecolorset = FALSE;
+  //int compressvalue = FALSE;
   int num[3];
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
@@ -214,8 +215,15 @@ int main (int argc, char **argv) {
   }
 
   // sequences are r,g,b or h,s,v
-  for (int i=0; i<3; i++) if (num[i] < 1) num[i] = 1;
-  for (int i=0; i<3; i++) if (num[i] > 1000000) num[i] = 1000000;
+  for (int i=0; i<3; i++) {
+    if (num[i] < 1) {
+      fprintf(stderr, "Time scale must be >0 ( n[%d] = %d ), resetting to 1!\n", i, num[i]);
+      num[i] = 1;
+    } else if (num[i] > 1000000) {
+      fprintf(stderr, "Time scale must be <=1000000 ( n[%d] = %d ), resetting to 1000000!\n", i, num[i]);
+      num[i] = 1000000;
+    }
+  }
 
   // find a multiplier that proportional to 1/RMS
   for (int i=0; i<3; i++) variance[i] = 1./sqrt((FLOAT)num[i]);
