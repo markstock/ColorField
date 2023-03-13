@@ -7,6 +7,7 @@
  * 2010-12-02 MJS modified to use HSV colors
  * 2011-01-26 MJS wrap hue around---don't bounce between [v0.1]
  * 2023-03-06 MJS periodically flip to complementary hue
+ * 2023-03-13 MJS use erf to clamp 0..1 and retain information
  *
  * A program to create a PNG image of bands of related colors
  *
@@ -67,7 +68,7 @@ int main (int argc, char **argv) {
   int depth = 8;
   int use_color = TRUE;
   int basecolorset = FALSE;
-  //int compressvalue = FALSE;
+  int compressvalue = FALSE;
   int num[3];
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
@@ -144,6 +145,8 @@ int main (int argc, char **argv) {
     } else if (strncmp(argv[i], "-3", 2) == 0) {
       tftimeconst = atof(argv[++i]);
       tfadd = 1.0 / powf(tftimeconst,2);
+    } else if (strncmp(argv[i], "-erf", 4) == 0) {
+      compressvalue = TRUE;
     } else if (strncmp(argv[i], "-v", 2) == 0) {
       debug = TRUE;
     } else {
@@ -309,10 +312,24 @@ int main (int argc, char **argv) {
     if (cspace == rgb) {
 
       // scale then add to the baseline
-      // these will be made range-bound when writing the image
-      red[x][y] = fmax(0.0, fmin(1.0, basecolor[0] + scale[0]*red[x][y]));
-      grn[x][y] = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
-      blu[x][y] = fmax(0.0, fmin(1.0, basecolor[2] + scale[2]*blu[x][y]));
+      red[x][y] = basecolor[0] + scale[0]*red[x][y];
+      grn[x][y] = basecolor[1] + scale[1]*grn[x][y];
+      blu[x][y] = basecolor[2] + scale[2]*blu[x][y];
+
+      // range-bound using erf
+      if (compressvalue) {
+        red[x][y] = 0.5 * (1.0 + erff(2.0*red[x][y]-1.0));
+        grn[x][y] = 0.5 * (1.0 + erff(2.0*grn[x][y]-1.0));
+        blu[x][y] = 0.5 * (1.0 + erff(2.0*blu[x][y]-1.0));
+
+      // range-bound using clamp
+      } else {
+        red[x][y] = fmax(0.0, fmin(1.0, red[x][y]));
+        grn[x][y] = fmax(0.0, fmin(1.0, grn[x][y]));
+        blu[x][y] = fmax(0.0, fmin(1.0, blu[x][y]));
+
+      }
+      // not making them range-bound (why?)
 
       // compress down to single channel
       if (!use_color) grn[x][y] = 0.3*red[x][y] + 0.6*grn[x][y] + 0.1*blu[x][y];
@@ -330,8 +347,23 @@ int main (int argc, char **argv) {
         hue += 2.0 * flippedthird;
         hue = hue - 6.0 * (floorf(hue / 6.0));
 
-        const FLOAT saturation = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
-        const FLOAT value      = fmax(0.0, fmin(1.0, basecolor[2] + scale[2]*blu[x][y]));
+        // now saturation and value
+
+        // scale then add to the baseline
+        FLOAT saturation = basecolor[1] + scale[1]*grn[x][y];
+        FLOAT value      = basecolor[2] + scale[2]*blu[x][y];
+
+        // range-bound using erf
+        if (compressvalue) {
+          saturation = 0.5 * (1.0 + erff(2.0*saturation-1.0));
+          value      = 0.5 * (1.0 + erff(2.0*value-1.0));
+
+        // range-bound using clamp
+        } else {
+          saturation = fmax(0.0, fmin(1.0, saturation));
+          value      = fmax(0.0, fmin(1.0, value));
+        }
+
         //fprintf(stderr,"this color in HSV is %g %g %g\n",hue,saturation,value);
 
         // then convert hsv to rgb
@@ -704,6 +736,8 @@ int usage (char progname[255],int status) {
        "                                                                           ",
        "   -3 t        flip to hue 1/3rd around color wheel with (t)ime constant,  ",
        "               default=100                                                 ",
+       "                                                                           ",
+       "   -erf        use error func instead of clamp to keep values within 0..1  ",
        "                                                                           ",
        "   -seed val   integer random seed value                                   ",
        "                                                                           ",
