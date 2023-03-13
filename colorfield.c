@@ -75,10 +75,14 @@ int main (int argc, char **argv) {
   FLOAT basecolor[3];
   FLOAT scale[3];
   FLOAT variance[3];
-  FLOAT hfsum = 0.0;
   FLOAT hftimeconst = -1.0;
   FLOAT hfadd = 0.0;
-  int flipped = FALSE;
+  FLOAT hfsum = 0.0;
+  FLOAT tftimeconst = -1.0;
+  FLOAT tfadd = 0.0;
+  FLOAT tfsum = 0.0;
+  int flippedhalf = FALSE;
+  int flippedthird = 0;
   COLORSPACE cspace = rgb;
   char progname[255];
   //char infilename[255];
@@ -136,6 +140,9 @@ int main (int argc, char **argv) {
     } else if (strncmp(argv[i], "-2", 2) == 0) {
       hftimeconst = atof(argv[++i]);
       hfadd = 1.0 / powf(hftimeconst,2);
+    } else if (strncmp(argv[i], "-3", 2) == 0) {
+      tftimeconst = atof(argv[++i]);
+      tfadd = 1.0 / powf(tftimeconst,2);
     } else if (strncmp(argv[i], "-v", 2) == 0) {
       debug = TRUE;
     } else {
@@ -238,15 +245,31 @@ int main (int argc, char **argv) {
     seq[1][y%num[1]] = (FLOAT)rand()/RAND_MAX;
     seq[2][y%num[2]] = (FLOAT)rand()/RAND_MAX;
 
-    // check for a flip
+    // check for a flip to the opposite (complementary) color
     if (hftimeconst > 0.0) {
       if ((FLOAT)rand()/RAND_MAX < hfsum) {
         // begin a flip!
-        flipped = !flipped;
+        flippedhalf = !flippedhalf;
         hfsum = 0.0;
       } else {
         // it will get more likely next step
         hfsum += hfadd;
+      }
+    }
+
+    // check for a flip one-third around the color wheel
+    if (tftimeconst > 0.0) {
+      if ((FLOAT)rand()/RAND_MAX < tfsum) {
+        // begin a flip, but which way?
+        const int upordown = -1 + 2*(rand()%2);
+        //fprintf(stderr,"flippedthird was %d  upordown %d", flippedthird, upordown);
+        flippedthird += upordown;
+        flippedthird = (flippedthird+3) % 3;
+        //fprintf(stderr,"  new flippedthird is %d\n", flippedthird);
+        tfsum = 0.0;
+      } else {
+        // it will get more likely next step
+        tfsum += tfadd;
       }
     }
 
@@ -295,7 +318,8 @@ int main (int argc, char **argv) {
 
         // hue is special because it wraps around - ensure it's 0..6 here
         FLOAT hue = basecolor[0] + scale[0]*red[x][y]/6.0;
-        if (flipped) hue += 3.0;
+        if (flippedhalf) hue += 3.0;
+        hue += 2.0 * flippedthird;
         hue = hue - 6.0 * (floorf(hue / 6.0));
 
         const FLOAT saturation = fmax(0.0, fmin(1.0, basecolor[1] + scale[1]*grn[x][y]));
@@ -669,6 +693,9 @@ int usage (char progname[255],int status) {
        "   -s r g b    real variance, default is 1.0                               ",
        "                                                                           ",
        "   -2 t        flip to complentary hue with (t)ime constant, default=100   ",
+       "                                                                           ",
+       "   -3 t        flip to hue 1/3rd around color wheel with (t)ime constant,  ",
+       "               default=100                                                 ",
        "                                                                           ",
        "   -seed val   integer random seed value                                   ",
        "                                                                           ",
