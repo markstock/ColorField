@@ -32,12 +32,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <math.h>
 #include <png.h>
 
-#define TRUE 1
-#define FALSE 0
 #define FLOAT float
 
 // type of colorspace, not all supported yet
@@ -61,14 +60,14 @@ int usage(char*, int);
  */
 int main (int argc, char **argv) {
 
-  int debug = FALSE;
+  bool debug = false;
   int seed = 235125;
   int x_resolution = 128;
   int y_resolution = 512;
   int depth = 8;
-  int use_color = TRUE;
-  int basecolorset = FALSE;
-  int compressvalue = FALSE;
+  bool use_color = true;
+  bool basecolorset = false;
+  bool compressvalue = false;
   int num[3];
   FLOAT **red = NULL;
   FLOAT **grn = NULL;
@@ -83,7 +82,7 @@ int main (int argc, char **argv) {
   FLOAT tftimeconst = -1.0;
   FLOAT tfadd = 0.0;
   FLOAT tfsum = 0.0;
-  int flippedhalf = FALSE;
+  bool flippedhalf = false;
   int flippedthird = 0;
   COLORSPACE cspace = rgb;
   char progname[255];
@@ -117,9 +116,9 @@ int main (int argc, char **argv) {
     } else if (strncmp(argv[i], "-hsv", 4) == 0) {
       cspace = hsv;
     } else if (strncmp(argv[i], "-color", 3) == 0) {
-      use_color = TRUE;
+      use_color = true;
     } else if (strncmp(argv[i], "-grey", 3) == 0) {
-      use_color = FALSE;
+      use_color = false;
     } else if (strncmp(argv[i], "-x", 2) == 0) {
       x_resolution = atoi(argv[++i]);
     } else if (strncmp(argv[i], "-y", 2) == 0) {
@@ -134,7 +133,7 @@ int main (int argc, char **argv) {
       basecolor[0] = atof(argv[++i]);
       basecolor[1] = atof(argv[++i]);
       basecolor[2] = atof(argv[++i]);
-      basecolorset = TRUE;
+      basecolorset = true;
     } else if (strncmp(argv[i], "-n", 2) == 0) {
       num[0] = atoi(argv[++i]);
       num[1] = atoi(argv[++i]);
@@ -146,9 +145,9 @@ int main (int argc, char **argv) {
       tftimeconst = atof(argv[++i]);
       tfadd = 1.0 / powf(tftimeconst,2);
     } else if (strncmp(argv[i], "-erf", 4) == 0) {
-      compressvalue = TRUE;
+      compressvalue = true;
     } else if (strncmp(argv[i], "-v", 2) == 0) {
-      debug = TRUE;
+      debug = true;
     } else {
       // it's not an arg, so it must be the input file
       //(void) strcpy(infilename,argv[i]);
@@ -248,7 +247,7 @@ int main (int argc, char **argv) {
     // march along x-direction, if required
     int x = 0;
     //int xmax = x_resolution;
-    //if (TRUE) xmax = 1;
+    //if (true) xmax = 1;
     //for (int x=0; x<xmax; x++) {
 
     // update the number list
