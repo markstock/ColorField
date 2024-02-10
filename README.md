@@ -6,7 +6,7 @@ Create a PNG image of bands of related colors
 
 You'll need the libpng development libraries. On Fedora/RHEL Linuxes, you can get them with:
 
-    sudo yum install libpng-devel
+    sudo dnf install libpng-devel
 
 Then, from the command-line on Linux, build colorfield with:
 
