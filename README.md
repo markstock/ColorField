@@ -70,3 +70,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+### Citing ColorField
+
+I don't get paid for writing or maintaining this, so if you find this tool useful or mention it in your writing, please please cite it by using the following BibTeX entry.
+
+```
+@Misc{ColorField2023,
+  author =       {Mark J.~Stock},
+  title =        {ColorField:  Create a PNG image of bands of related colors},
+  howpublished = {\url{https://github.com/markstock/ColorField}},
+  year =         {2023}
+}
+```
